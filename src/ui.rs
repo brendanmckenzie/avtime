@@ -52,6 +52,28 @@ async fn show_loading_screen(
     terminal.draw(|f| {
         let size = f.area();
 
+        // Center content with max width
+        let horizontal_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(0),
+                Constraint::Max(80),
+                Constraint::Min(0),
+            ])
+            .split(size);
+
+        // Center content with max height
+        let vertical_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),
+                Constraint::Max(20),
+                Constraint::Min(0),
+            ])
+            .split(horizontal_chunks[1]);
+
+        let centered_area = vertical_chunks[1];
+
         let main_block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Cyan))
@@ -62,8 +84,8 @@ async fn show_loading_screen(
                     .add_modifier(Modifier::BOLD),
             ));
 
-        let inner = main_block.inner(size);
-        f.render_widget(main_block, size);
+        let inner = main_block.inner(centered_area);
+        f.render_widget(main_block, centered_area);
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -143,6 +165,28 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
         terminal.draw(|f| {
             let size = f.area();
 
+            // Center content with max width
+            let horizontal_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Min(0),
+                    Constraint::Max(80),
+                    Constraint::Min(0),
+                ])
+                .split(size);
+
+            // Center content with max height
+            let vertical_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Min(0),
+                    Constraint::Max(20),
+                    Constraint::Min(0),
+                ])
+                .split(horizontal_chunks[1]);
+
+            let centered_area = vertical_chunks[1];
+
             let main_block = Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Cyan))
@@ -153,8 +197,8 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
                         .add_modifier(Modifier::BOLD),
                 ));
 
-            let inner = main_block.inner(size);
-            f.render_widget(main_block, size);
+            let inner = main_block.inner(centered_area);
+            f.render_widget(main_block, centered_area);
 
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
