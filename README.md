@@ -52,7 +52,7 @@ The compiled binary will be in `target/release/avtime`
 ### Install globally
 
 ```bash
-cargo install --path .
+cargo install --git https://github.com/brendanmckenzie/avtime
 ```
 
 ## Usage
