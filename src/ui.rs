@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -157,6 +157,7 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
             (adjusted, sync.offset_ms, seconds_since, sync.server.clone())
         };
 
+        let utc_time: DateTime<Utc> = time;
         let local_time: DateTime<Local> = time.into();
         let sync_color = get_sync_color(seconds_since_sync);
         let offset_color = get_color_for_offset(offset_ms);
@@ -180,7 +181,7 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Min(0),
-                    Constraint::Max(20),
+                    Constraint::Max(28),
                     Constraint::Min(0),
                 ])
                 .split(horizontal_chunks[1]);
@@ -204,36 +205,72 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
                 .direction(Direction::Vertical)
                 .margin(1)
                 .constraints([
-                    Constraint::Length(1),
-                    Constraint::Length(3),
-                    Constraint::Length(1),
-                    Constraint::Length(3),
-                    Constraint::Length(3),
-                    Constraint::Length(3),
-                    Constraint::Min(0),
-                    Constraint::Length(1),
+                    Constraint::Length(1),  // Local label
+                    Constraint::Length(1),  // Local date
+                    Constraint::Length(3),  // Local time box
+                    Constraint::Length(1),  // UTC label
+                    Constraint::Length(1),  // UTC date
+                    Constraint::Length(3),  // UTC time box
+                    Constraint::Length(1),  // Spacer
+                    Constraint::Length(3),  // Server info
+                    Constraint::Length(3),  // Offset info
+                    Constraint::Length(3),  // Sync gauge
+                    Constraint::Min(0),     // Spacer
+                    Constraint::Length(1),  // Help text
                 ])
                 .split(inner);
 
-            let date_widget = Paragraph::new(local_time.format("%Y-%m-%d").to_string())
+            // Local time section
+            let local_label = Paragraph::new("LOCAL TIME")
+                .style(Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center);
+            f.render_widget(local_label, chunks[0]);
+
+            let local_date_widget = Paragraph::new(local_time.format("%Y-%m-%d").to_string())
                 .style(Style::default().fg(Color::White))
                 .alignment(Alignment::Center);
-            f.render_widget(date_widget, chunks[0]);
+            f.render_widget(local_date_widget, chunks[1]);
 
-            let time_block = Block::default()
+            let local_time_block = Block::default()
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::DarkGray));
-            let time_inner = time_block.inner(chunks[1]);
-            f.render_widget(time_block, chunks[1]);
+            let local_time_inner = local_time_block.inner(chunks[2]);
+            f.render_widget(local_time_block, chunks[2]);
 
-            let time_widget = Paragraph::new(local_time.format("%H:%M:%S%.3f").to_string())
+            let local_time_widget = Paragraph::new(local_time.format("%H:%M:%S%.3f").to_string())
                 .style(
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD),
                 )
                 .alignment(Alignment::Center);
-            f.render_widget(time_widget, time_inner);
+            f.render_widget(local_time_widget, local_time_inner);
+
+            // UTC time section
+            let utc_label = Paragraph::new("UTC TIME")
+                .style(Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center);
+            f.render_widget(utc_label, chunks[3]);
+
+            let utc_date_widget = Paragraph::new(utc_time.format("%Y-%m-%d").to_string())
+                .style(Style::default().fg(Color::White))
+                .alignment(Alignment::Center);
+            f.render_widget(utc_date_widget, chunks[4]);
+
+            let utc_time_block = Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray));
+            let utc_time_inner = utc_time_block.inner(chunks[5]);
+            f.render_widget(utc_time_block, chunks[5]);
+
+            let utc_time_widget = Paragraph::new(utc_time.format("%H:%M:%S%.3f").to_string())
+                .style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .alignment(Alignment::Center);
+            f.render_widget(utc_time_widget, utc_time_inner);
 
             let server_info = vec![Line::from(vec![
                 Span::styled("NTP Server: ", Style::default().fg(Color::DarkGray)),
@@ -247,7 +284,7 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
                         .title(" Server "),
                 )
                 .alignment(Alignment::Left);
-            f.render_widget(server_widget, chunks[3]);
+            f.render_widget(server_widget, chunks[7]);
 
             let offset_text = format!("{:+} ms", offset_ms);
             let offset_info = vec![Line::from(vec![
@@ -262,7 +299,7 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
                         .title(" Offset "),
                 )
                 .alignment(Alignment::Left);
-            f.render_widget(offset_widget, chunks[4]);
+            f.render_widget(offset_widget, chunks[8]);
 
             let sync_age_ratio = (seconds_since_sync.min(30) as f64 / 30.0) * 100.0;
             let sync_label = format!(
@@ -280,12 +317,12 @@ pub async fn display_time(ntp_sync: Arc<Mutex<NtpSync>>) -> io::Result<()> {
                 .gauge_style(Style::default().fg(sync_color))
                 .label(sync_label)
                 .ratio(1.0 - (sync_age_ratio / 100.0));
-            f.render_widget(sync_gauge, chunks[5]);
+            f.render_widget(sync_gauge, chunks[9]);
 
             let help_text = Paragraph::new("Press 'q' or Ctrl+C to quit")
                 .style(Style::default().fg(Color::DarkGray))
                 .alignment(Alignment::Center);
-            f.render_widget(help_text, chunks[7]);
+            f.render_widget(help_text, chunks[11]);
         })?;
 
         sleep(Duration::from_millis(10)).await;
